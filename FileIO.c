@@ -34,7 +34,7 @@
 #include <ctype.h>                 /* Used for the isdigit() function */
 #include <stdio.h>                    /* Used to handle the FILE type */
 #include "FileIO.h"                                /* Function header */
- #include <stdlib.h>   /*Used fo atoi */
+
 
 /*
  *
@@ -62,7 +62,7 @@ int GetInt (FILE *fp) {
         if ( c == '#' )	                          /* Skip the comment */
             do {
                 c = getc (fp);
-            } while ( c != '\n');
+            } while ( c != ' ');
         if ( c == '-')
             sign = -1;
     } while (!isdigit(c) && !feof(fp));
@@ -81,22 +81,23 @@ int GetInt (FILE *fp) {
     }
 }
 
-struct reference GetAddress (FILE *fp)
+
+reference GetAddress (FILE *fp)
 {
     char c;                                    /*Character read*/
-    struct reference the_Reference;            /*Reference from trce file*/
+    reference the_Reference;            /*Reference from trce file*/
+
     do { 
         c = getc (fp);                          /* Get next character */
         if ( c == '#' )                           /* Skip the comment */
             do {
                 c = getc (fp);
             } while ( c != '\n');
-        if ( c == '-')
-            sign = -1;
     } while (!isxdigit(c) && !feof(fp));
     
     ungetc(c,fp);                                   /*Return the character */
-    fscanf(fp,"%x %x \n",&the_Reference.address, &c)
+    fscanf(fp,"%x %c \n",&the_Reference.address, &c);
+    the_Reference.address = the_Reference.address/512;
 
     if(c == 'R')
         the_Reference.access = READ;

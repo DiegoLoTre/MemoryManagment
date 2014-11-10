@@ -30,9 +30,12 @@
  * $Id$
  */
 
+#include "Structure.h" /* Define the change of hexadecimal to decimal*/
+ 
 /************************************************************** 
  *             Declare the function prototypes                * 
  **************************************************************/
 
 int  GetInt (FILE *fp);
 void ErrorMsg (char * function, char *message);
+reference GetAddress (FILE *fp);

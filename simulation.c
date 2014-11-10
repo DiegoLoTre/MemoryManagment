@@ -30,26 +30,30 @@
  *
  */
 
- #include <glib.h>
+#include <glib.h>
 #include <stdlib.h>                     /* Used for malloc definition */
 #include <stdio.h>                                /* Used for fprintf */
 #include <string.h>                                /* Used for strcmp */
 #include <assert.h>                      /* Used for the assert macro */
 #include "FileIO.h"    /* Definition of file access support functions */
-#include "Structure.h" /* Define the change of hexadecimal to decimal*/
+//#include "Structure.h" /* Define the change of hexadecimal to decimal*/
 
 /***********************************************************************
  *                       Global constant values                        *
  **********************************************************************/
 #define TLBsize 8
-#define FRAMEsize 15
+#define FRAMEsize 16
+#define PAGEsize 128
+
 /***********************************************************************
  *                          Main entry point                           *
  **********************************************************************/
 int main (int argc, const char * argv[]) {
     
     FILE   *fp;                                /* Pointer to the file */
-    int TLB[TLBsize];
+    reference TLB [TLBsize];
+    reference Frame [FRAMEsize];
+    reference Page [PAGEsize];
     int i = 0;
     
     /* Open the file and check that it exists */
@@ -63,24 +67,46 @@ int main (int argc, const char * argv[]) {
     {
         /* Variable initialization */
 		int events = 0;
-		int averageAccessTime = 0;
+		float averageAccessTime = 0;
 		int pageIns = 0;
 		int pageOuts = 0;
-		int hit = 0;
+		float hit = 0;
+        int j = 0;
 
-        /*
-        * Read the process information until the end of file
-        * is reached.
-        */
+        int costoPagina = GetInt(fp);
+        int costoTLB = GetInt(fp);
+        int costoDisco = GetInt(fp);
+
+        printf("Pagina: %d \nTLB: %d \nDisco: %d\n", costoPagina,costoTLB, costoDisco);
+
         while (!feof(fp))
         {
             
-            TLB[i] = Translate(fp);
+            Page[i] = GetAddress(fp);
             events++;
 
+            /*printf("HEAXADECIMAL = Page[%d]=%x  %d\n",i,Page[i].address/512, Page[i].access);
+            printf("DECIMAL = Page[%d]=%d  %d\n",i,Page[i].address/512, Page[i].access);*/
 
-            printf("TLB[%d]\n%d",TLB[i],i);
+            printf("HEAXADECIMAL = Page[%d]=%x  %d\n",i,Page[i].address, Page[i].access);
+            printf("DECIMAL = Page[%d]=%d  %d\n",i,Page[i].address, Page[i].access);
+
             i++;
         }
+
+        printf("Total number of events: %d\n Average access time %f\n", events, averageAccessTime);
+        printf("Number of page-ins %d\n Number of page-outs %d\n",pageIns, pageOuts);
+        
+        printf("TLB hit ratio %f\n\n", hit);
+        printf("The final state of the TLB and frame tables are:\nTLB contents\n");
+
+        /*for (j = 0; j < TLBsize; ++j)
+        {
+            printf("Page#: %d frame#:  %d ",TLB[i][0],TLB[i][1]);
+            printf("lru:      %d A:   ",TLB[i][2],TLB[i][4]);
+        }*/
+
+        printf("Frame table contents");
+        printf("Frame#:   0 page#:  33 lru:      4 A:   W S:   D\n");
     }
 }
