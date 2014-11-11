@@ -121,10 +121,25 @@ int main (int argc, const char * argv[]) {
                 }
                 else
                 {
-#ifdef DEBUG
-                    printf("No encontrado en el TLB, se trata de reemplazar al adecuado\n");
-#endif
+           
                     //Reemplazar()
+                    int llru = TLB[0].lastUse,posicion=0; 
+                    for (j = 1; j < TLBsize; ++j)
+                    {
+                        if (llru>TLB[j].lastUse)
+                        {
+                            llru = TLB[j].lastUse;
+                            posicion = j;
+                        }
+                        
+                    }
+#ifdef DEBUG
+                    printf("No encontrado en el TLB, se trata de reemplazar a\n");
+#endif          
+                    temp.lastUse = events;
+                    TLB[posicion] = temp;
+
+
                 }
                 pageIns++;
             }
