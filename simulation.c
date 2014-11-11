@@ -56,6 +56,11 @@ int main (int argc, const char * argv[]) {
     reference Page [PAGEsize];
     int i = 0;
     
+    for (i = 0; i < TLBsize; ++i)
+    {
+        TLB[i].address=0;
+    }
+
     /* Open the file and check that it exists */
     fp = fopen (argv[1],"r");	  /* Open file for read operation */
     /* There is an error */
@@ -72,41 +77,87 @@ int main (int argc, const char * argv[]) {
 		int pageOuts = 0;
 		float hit = 0;
         int j = 0;
+        i = 0;
 
         int costoPagina = GetInt(fp);
         int costoTLB = GetInt(fp);
         int costoDisco = GetInt(fp);
 
+#ifdef DEBUG
         printf("Pagina: %d \nTLB: %d \nDisco: %d\n", costoPagina,costoTLB, costoDisco);
-
+#endif  
         while (!feof(fp))
         {
-            
-            Page[i] = GetAddress(fp);
             events++;
-
-            /*printf("HEAXADECIMAL = Page[%d]=%x  %d\n",i,Page[i].address/512, Page[i].access);
-            printf("DECIMAL = Page[%d]=%d  %d\n",i,Page[i].address/512, Page[i].access);*/
-
-            printf("HEAXADECIMAL = Page[%d]=%x  %d\n",i,Page[i].address, Page[i].access);
-            printf("DECIMAL = Page[%d]=%d  %d\n",i,Page[i].address, Page[i].access);
-
-            i++;
+            
+            reference temp = GetAddress(fp);
+            int encontrado = 0;
+            for(j=0; j<= i; j++)
+            {
+                //Comprobar que este en el TLB 
+                if(TLB[j].address == temp.address)
+                {
+                    //Encontrado en el TLB
+                    encontrado = 1;
+                    hit++;
+#ifdef DEBUG
+                    printf("La direccion %x ya esta en TLB, su uso pasado fue en %d y su ultimo uso ahora es %d\n",TLB[j].address,TLB[j].lastUse,events);
+#endif                    
+                    TLB[j].lastUse = events;
+                    
+                }
+            }
+            if (encontrado == 0)
+            {
+                //No encontrado en el TLB
+                if ((TLB[i].address == 0) && (i<8))
+                {
+#ifdef DEBUG
+                    printf("La direccion %x no encontrado en el TLB, se trata de asignar a un vacio, su primer uso es %d\n",temp.address, events);
+#endif  
+                    TLB[i] = temp;
+                    TLB[i].lastUse = events;
+                    i=(i+1);
+                }
+                else
+                {
+#ifdef DEBUG
+                    printf("No encontrado en el TLB, se trata de reemplazar al adecuado\n");
+#endif
+                    //Reemplazar()
+                }
+                pageIns++;
+            }
         }
-
-        printf("Total number of events: %d\n Average access time %f\n", events, averageAccessTime);
-        printf("Number of page-ins %d\n Number of page-outs %d\n",pageIns, pageOuts);
+#ifdef DEBUG
+        printf("\n\n\n\n\n");
+#endif
+        printf("My results for this example are:\n");
+        printf("Total number of events: %d\nAverage access time %f\n", events, averageAccessTime);
+        printf("Number of page-ins %d\nNumber of page-outs %d\n",pageIns, pageOuts);
         
-        printf("TLB hit ratio %f\n\n", hit);
-        printf("The final state of the TLB and frame tables are:\nTLB contents\n");
+        printf("TLB hit ratio %f\n\n", hit/events);
 
-        /*for (j = 0; j < TLBsize; ++j)
+
+#ifdef DEBUG
+        printf("The final state of the TLB and frame tables are:\n\nTLB contents\n");
+        for (i = 0; i < TLBsize; ++i)
         {
-            printf("Page#: %d frame#:  %d ",TLB[i][0],TLB[i][1]);
-            printf("lru:      %d A:   ",TLB[i][2],TLB[i][4]);
-        }*/
+            if(TLB[i].address > 100)
+                printf("Page#: %d frame#: 0 lru = %d",TLB[i].address, TLB[i].lastUse);
+            else if(TLB[i].address > 10)
+                printf("Page#: %d  frame#: 0 lru = %d",TLB[i].address, TLB[i].lastUse);
+            else
+                printf("Page#: %d   frame#: 0 lru = %d",TLB[i].address, TLB[i].lastUse);
 
-        printf("Frame table contents");
-        printf("Frame#:   0 page#:  33 lru:      4 A:   W S:   D\n");
+            if(TLB[i].lastUse > 100)
+                printf(" A:  2 S: %d\n",TLB[i].access);
+            else if(TLB[i].lastUse > 10)
+                printf("  A:  2 S: %d\n",TLB[i].access);
+            else
+                printf("   A:  2 S: %d\n",TLB[i].access);
+        }
+       
+#endif
     }
 }

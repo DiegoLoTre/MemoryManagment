@@ -9,7 +9,7 @@ struct reference
 {
 	unsigned int address;
 	long int frame;
-	long int lastUse;
+	int lastUse;
 	int access;
 	char status[2];
 };
