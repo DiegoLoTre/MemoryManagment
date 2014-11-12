@@ -4,6 +4,13 @@ enum ACCESS
 	READ,
 	WRITE
 };
+enum STATUS
+{
+	INVALID,
+	VALID,
+	DIRT,
+	CLEAN
+};
 
 struct reference
 {
@@ -11,7 +18,7 @@ struct reference
 	long int frame;
 	int lastUse;
 	int access;
-	char status[2];
+	int status;
 };
 
 typedef struct reference reference;

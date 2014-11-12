@@ -60,6 +60,10 @@ int main (int argc, const char * argv[]) {
     {
         TLB[i].address=0;
     }
+    for (i = 0; i < FRAMEsize; ++i)
+    {
+        Frame[i].status=0;
+    }
 
     /* Open the file and check that it exists */
     fp = fopen (argv[1],"r");	  /* Open file for read operation */
@@ -172,7 +176,23 @@ int main (int argc, const char * argv[]) {
             else
                 printf("   A:  2 S: %d\n",TLB[i].access);
         }
-       
+        printf("\nFrame table contents\n");
+        for (i = 0; i < FRAMEsize; ++i)
+        {
+            if(Frame[i].address > 100)
+                printf("Frame#: %d page#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+            else if(Frame[i].address > 10)
+                printf("Frame#: %d  page#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+            else
+                printf("Frame#: %d   page#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+
+            if(Frame[i].lastUse > 100)
+                printf(" A:  2 S: %d\n",Frame[i].access);
+            else if(Frame[i].lastUse > 10)
+                printf("  A:  2 S: %d\n",Frame[i].access);
+            else
+                printf("   A:  2 S: %d\n",Frame[i].access);
+        }
 #endif
     }
 }
