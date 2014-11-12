@@ -56,9 +56,21 @@ int main (int argc, const char * argv[]) {
     reference Page [PAGEsize];
     int i = 0;
     
+    //Asignando direcciones de arreglos  a 0
     for (i = 0; i < TLBsize; ++i)
     {
         TLB[i].address=0;
+        TLB[i].lastUse=0;
+    }
+
+    for (i = 0; i < FRAMEsize; ++i)
+    {
+        Frame[i].address=0;
+    }
+
+    for (i = 0; i < PAGEsize; ++i)
+    {
+        Page[i].address=0;
     }
 
     /* Open the file and check that it exists */
@@ -76,6 +88,7 @@ int main (int argc, const char * argv[]) {
 		int pageIns = 0;
 		int pageOuts = 0;
 		float hit = 0;
+        int frameLleno  = 1;
         int j = 0;
         i = 0;
 
@@ -100,6 +113,7 @@ int main (int argc, const char * argv[]) {
                     //Encontrado en el TLB
                     encontrado = 1;
                     hit++;
+                    averageAccessTime = averageAccessTime + 10;
 #ifdef DEBUG
                     printf("La direccion %x ya esta en TLB, su uso pasado fue en %d y su ultimo uso ahora es %d\n",TLB[j].address,TLB[j].lastUse,events);
 #endif                    
@@ -107,46 +121,77 @@ int main (int argc, const char * argv[]) {
                     
                 }
             }
-            if (encontrado == 0)
+            if (encontrado == 0) /*No se encontró en el TLB*/
             {
-                //No encontrado en el TLB
-                if ((TLB[i].address == 0) && (i<8))
-                {
-#ifdef DEBUG
-                    printf("La direccion %x no encontrado en el TLB, se trata de asignar a un vacio, su primer uso es %d\n",temp.address, events);
-#endif  
-                    TLB[i] = temp;
-                    TLB[i].lastUse = events;
-                    i=(i+1);
-                }
-                else
-                {
+               
+                
            
-                    //Reemplazar()
-                    int llru = TLB[0].lastUse,posicion=0; 
-                    for (j = 1; j < TLBsize; ++j)
+                //Obtener el recurso de último uso
+                int llru = TLB[0].lastUse, posicion=0; 
+                for (j = 1; j < TLBsize; ++j)
+                {
+                    if (llru>TLB[j].lastUse)
                     {
-                        if (llru>TLB[j].lastUse)
-                        {
-                            llru = TLB[j].lastUse;
-                            posicion = j;
-                        }
-                        
+                        llru = TLB[j].lastUse;
+                        posicion = j;
                     }
-#ifdef DEBUG
-                    printf("No encontrado en el TLB, se trata de reemplazar a\n");
-#endif          
-                    temp.lastUse = events;
-                    TLB[posicion] = temp;
+                    
+                } 
 
+                /*Remplazando el valor en el TLB*/
+            
+                temp.lastUse = events;
+                TLB[posicion] = temp;  /*Valor reasignado en TLB*/
+                i++;
+                averageAccessTime = averageAccessTime +10;
 
+                /*Variable para saber si hay que llegar a tabla de Paginas*/
+                int mandarDisco = 1; /*1 = Si    2= No*/
+                
+                
+                
+                for(j=0; j< FRAMEsize; j++)
+                {
+                    if(Frame[j].address== temp.address)
+                    {
+                        averageAccessTime = averageAccessTime + 100;
+                        Frame[j] = temp;
+                        mandarDisco = 0; /*Quitar bandera para mandar al disco*/
+                        frameLleno = 0;
+                        break;
+                    }
+                    else
+                    {
+                        if(Frame[j].address== 0)
+                        {
+                            averageAccessTime = averageAccessTime + 100;
+                            Frame[j] = temp;
+                            frameLleno=0;
+                            break;
+                        }
+                    }                
                 }
+
+                if(frameLleno == 1)
+                {
+                    pageOuts++;
+                    frameLleno = 0;
+                }    
+
+                if(mandarDisco == 1)
+                {
+                    
+                    averageAccessTime = averageAccessTime +1000000;
+                }
+
+                
                 pageIns++;
-            }
+            } /* Termina if no encontrado en TLB*/
         }
 #ifdef DEBUG
         printf("\n\n\n\n\n");
 #endif
+        averageAccessTime = averageAccessTime/events;
         printf("My results for this example are:\n");
         printf("Total number of events: %d\nAverage access time %f\n", events, averageAccessTime);
         printf("Number of page-ins %d\nNumber of page-outs %d\n",pageIns, pageOuts);
@@ -173,6 +218,24 @@ int main (int argc, const char * argv[]) {
                 printf("   A:  2 S: %d\n",TLB[i].access);
         }
        
+        printf("The final state of the Frame and frame tables are:\n\nFrame contents\n");
+
+        for (i = 0; i < FRAMEsize; ++i)
+        {
+            if(Frame[i].address > 100)
+                printf("Page#: %d frame#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+            else if(Frame[i].address > 10)
+                printf("Page#: %d  frame#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+            else
+                printf("Page#: %d   frame#: 0 lru = %d",Frame[i].address, Frame[i].lastUse);
+
+            if(Frame[i].lastUse > 100)
+                printf(" A:  2 S: %d\n",Frame[i].access);
+            else if(Frame[i].lastUse > 10)
+                printf("  A:  2 S: %d\n",Frame[i].access);
+            else
+                printf("   A:  2 S: %d\n",Frame[i].access);
+        }
 #endif
     }
 }
