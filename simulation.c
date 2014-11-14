@@ -16,6 +16,7 @@
  * Revision history:
  *
  *          27 october - File created
+ *          13 November - Mehtods refactored
  *
  * Error handling:
  *          None
@@ -74,9 +75,9 @@ void printTables(reference TLB[TLBsize], reference Frame[FRAMEsize])
         else
             printf("W");
 
-        /*if(TLB[i].status == 0)
+        if(TLB[i].status == INVALID)
             printf(" S: I\n");
-        else if(TLB[i].status == 1)*/
+        else if(TLB[i].status == VALID)
             printf(" S: V\n");
     }
     printf("\nFrame table contents\n");
@@ -131,72 +132,124 @@ void Initialize(reference TLB[TLBsize], reference Frame[FRAMEsize], reference Pa
  **********************************************************************/
 int main (int argc, const char * argv[]) {
     
+     /* Variable initialization */
+
     FILE   *fp;                                /* Pointer to the file */
     reference TLB [TLBsize];
     reference Frame [FRAMEsize];
     reference Page [PAGEsize];
-    
+    int events = 0;
+    float averageAccessTime = 0;
+    int pageIns = 0;
+    int pageOuts = 0;
+    float hit = 0;
+    int fullFrame  = 0;
+    int j = 0, i = 0;
+
     Initialize(TLB, Frame, Page);
 
-    int i = 0;
     /* Open the file and check that it exists */
     fp = fopen (argv[1],"r");	  /* Open file for read operation */
+    
     /* There is an error */
     if (!fp)
     {                               
         ErrorMsg("main","filename does not exist or is corrupted");
     }
+    /* File works */
     else
     {
-        /* Variable initialization */
-		int events = 0;
-		float averageAccessTime = 0;
-		int pageIns = 0;
-		int pageOuts = 0;
-		float hit = 0;
-        int fullFrame  = 0;
-        int j = 0;
-        i = 0;
-
+        /* Gets the values of each access time*/
         int tMem = GetInt(fp);
         int tTLB = GetInt(fp);
         int tFault = GetInt(fp);
 
-
-        #ifdef DEBUG
+        #ifdef DEBUG DEBUGHARD
             printf("Mem: %d \nTLB: %d \nFault: %d\n", tMem, tTLB, tFault);
         #endif
 
-
+        /* Iterates over the elements in th traze */
         while (!feof(fp))
         {
             events++;
             
-            //Get the address
-            reference temp = GetAddress(fp);
+            /* Get the address */
+            reference temp = GetAddress(fp);            
 
-            int found = 0;
-            printf("%d\n",i );
+            int foundInTLB = 0;
+
+            /* Check if the address is on TLB */ 
             for(j=0; j<= i; j++)
             {
-                //Check if the address is on TLB 
                 if((TLB[j].status != INVALID ) && (TLB[j].address == temp.address))
                 {
-                    //found en el TLB
-                    found = 1;
+                    /* Address found in TLB */
+                    foundInTLB = 1;
                     hit++;
                     averageAccessTime = averageAccessTime + tTLB;
 
-                    #ifdef DEBUG
+                    #ifdef DEBUGHARD
                         printf("Address %x is already in TLB, its last use was in %d and now its %d\n",TLB[j].address,TLB[j].lastUse,events);
                     #endif
 
                     TLB[j].lastUse = events;
+                    Frame[TLB[j].frame].lastUse = events;
                 }
             }
-            if (found == 0) /*Not found in TLB*/
+
+            /* Address not found in TLB */
+            if (foundInTLB == 0) 
             {
-                //Get last used resource
+                temp.lastUse = events;
+                temp.status = VALID;
+
+                int foundInMem = 0;
+                
+                /* Check if is in Frame Page */
+                for(j=0; j< FRAMEsize; j++)
+                {
+                    /* Found in Frame,  */
+                    if((Frame[j].status != INVALID ) && (Frame[j].address== temp.address))
+                    {   
+                        #ifdef DEBUGHARD
+                            printf("Address %d is in Frame Table\n",temp.address);
+                        #endif
+                        averageAccessTime = averageAccessTime + tMem;
+                        foundInMem = 1;
+                        temp.frame = j;
+                    }             
+                }
+
+                /* Address not in Frame Table */
+                if (foundInMem==0)
+                {
+                    #ifdef DEBUGHARD
+                        printf("Address %d have to be pulled from HD\n",temp.address);
+                    #endif
+
+                    /* Look for the last used Frame to replace */
+                    int lastUsed = Frame[0].lastUse, lastUsedPosition=0; 
+                    for (j = 1; j < FRAMEsize; ++j)
+                    {
+                        if (lastUsed>Frame[j].lastUse)
+                        {
+                            lastUsed = Frame[j].lastUse;
+                            lastUsedPosition = j;
+                        }
+                    }
+                    temp.frame = lastUsedPosition;
+
+                    if (Frame[lastUsedPosition].status!=INVALID)
+                        pageOuts++;
+
+                    /* Replace the oldest Frame*/
+                    Frame[lastUsedPosition] = temp;
+
+                    averageAccessTime = averageAccessTime + tFault + tMem;
+                    pageIns++;
+                }
+
+                /* Look for the last used TLB to replace */
                 int lastUsed = TLB[0].lastUse, lastUsedPosition=0; 
                 for (j = 1; j < TLBsize; ++j)
                 {
@@ -207,73 +260,25 @@ int main (int argc, const char * argv[]) {
                     }
                 } 
 
-
-                temp.lastUse = events;
-                temp.status = VALID;
-
-                /*Variable para saber si hay que llegar a tabla de Paginas*/
-                int mandarDisco = 1; /*1 = Si    2= No*/
-                
-                for(j=0; j< FRAMEsize; j++)
-                {
-                    if(Frame[j].address== temp.address)
-                    {
-                        averageAccessTime = averageAccessTime + tMem;
-                        temp.frame = j;
-                        Frame[j] = temp;
-                        mandarDisco = 0; /*Quitar bandera para mandar al disco*/
-                        fullFrame = 1;
-                        break;
-                    }
-                    else
-                    {
-                        if(Frame[j].address== 0)
-                        {
-                            averageAccessTime = averageAccessTime + tMem;
-                            temp.frame = j;
-                            Frame[j] = temp;
-                            fullFrame=1;
-                            break;
-                        }
-                    }                
-                }
-
-                if(fullFrame == 0)
-                {
-                    pageOuts++;
-                    fullFrame = 0;
-                }    
-
-                if(mandarDisco == 1)
-                {
-                    
-                    averageAccessTime = averageAccessTime + tFault;
-                }
-
-                 /*Replace the value on TLB*/
+                /*Replace the oldest TLB*/
                 TLB[lastUsedPosition] = temp;
                 
-                i++;
+                if (i<TLBsize)
+                    i++;
+
                 averageAccessTime = averageAccessTime + tTLB;
 
-                pageIns++;
-
-
-            } /* Termina if no encontrado en TLB*/
+            }
         }
-#ifdef DEBUG
-        printf("\n\n\n\n\n");
-#endif
+
+        /* Calculates the results and the prints them */
         averageAccessTime = averageAccessTime/events;
-        //printf("My results for this example are:\n");
-        printf("Total number of events: %d\nAverage access time %f\n", events, averageAccessTime);
+        printf("\nTotal number of events: %d\nAverage access time %f\n", events, averageAccessTime);
         printf("Number of page-ins %d\nNumber of page-outs %d\n",pageIns, pageOuts);
-        
         printf("TLB hit ratio %f\n\n", hit/events);
 
-
-#ifdef DEBUG
-        printTables(TLB,Frame);
-#endif
+        #ifdef DEBUG DEBUGHARD
+                printTables(TLB,Frame);
+        #endif
     }
 }
